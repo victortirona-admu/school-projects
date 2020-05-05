@@ -1,0 +1,9 @@
+4
+1
+2
+3
+2
+1
+
+this is ( x^2 + x + 1 )^2
+roots are -0.5 +/- sqrt(3/4) each occuring twice
