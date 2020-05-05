@@ -1,0 +1,156 @@
+---
+title: "Relationship Between Words TMtweets"
+output: html_notebook
+---
+
+#1
+```{r, message=FALSE}
+library(dplyr)
+library(tidytext)
+library(tidyr)
+library(stringr)
+library(igraph)
+library(ggraph)
+```
+
+#2
+#Importing the CSV "[PSY115] Toxic Masculinity Master Sheet.csv" file into an RStudio table
+```{r}
+#Creating a variable containing the table header names
+names= c('tweets')
+
+#read.csv takes the data in each column and row in the source CSV file and puts it into the table "TMtweets"
+#col.names uses the variable "names" as the name of the headers of the data
+TMtweets <- read.csv(
+  file = "TironaEnage_Data_conv_051519.csv", 
+  sep = ",",
+  stringsAsFactors = FALSE,
+  check.names = FALSE,
+  encoding = "UTF-8",
+  header= FALSE,
+  col.names = names
+)
+```
+
+#3
+#Converts the TMtweets data frame into a tbl_df class data frame "TM_df". The second line removes all other columns except the "tweets" column.
+#Uses the package: tibble
+```{r}
+TM_df = as_tibble(TMtweets)
+```
+
+#4
+#Tokenizes the tweets or separates each word into its separate row in the data frame. 
+#Uses the package: tidytext
+```{r}
+TM_oneword = unnest_tokens(TM_df,
+  output = word,
+  input = tweets)
+```
+
+#5
+#Creating a data frame of words to remove from the source data. These words were collected by manually reading the tweets and listing down typos or any non-descriptive words.
+```{r}
+CustomStopwords=tibble(word = c("is", "to", "t.co", "https", "a", "the", "in", "that", "this", "and", "of", "how", "they", "after", "justcallmebaba", "15", "8bgu5jv6od", "amp", "i", "about", "bzcwsjnra7", "netfeelix", "grahamallen_1", "retweet", "afjmvlzixr", "ultrakevin900", "mrfeelswildride", "jerrydunleavy", "shameonyouwarwick", "warwickuni", "rachelvmckinnon", "petersweden7", "msavaarmstrong", "you", "it", "with", "for", "are", "on", "be", "we", "not", "as", "but", "their", "by", "do", "have", "my", "so", "like", "can", "just", "it's", "all", "more", "he", "what", "get", "your", "or", "only", "was", "if", "at", "our", "when", "who", "up", "because", "being", "from", "no", "an", "some", "s", "it’s", "there", "thing", "too", "much", "now", "which", "than", "say", "take", "make", "then", "does", "still", "any", "emrazz", "you're", "you’re", "can't", "where", "2", "lol", "am", "off", "that's", "look", "makes", "maybe", "that’s", "gt", "must", "tell", "ever", "sure", "both", "y’all", "doesn’t", "doesn't", "every", "fucking", "having", "isn't", "around", "while", "1", "via", "yes", "little", "use", "literally", "gonna", "isn't", "done", "tweet", "didn't", "everything", "oh", "u", "3", "etc", "there's", "keep", "though", "through", "yeah", "either", "getting", "ok", "since", "two", "okay", "gets", "lmao", "bc", "each", "ass", "video", "didn’t", "post", "dont", "far", "im", "ppl", "5", "4",  "hey", "i've", "seems", "week", "whatever", "gotta", "omg", "water", "2019", "aren't", "came", "they're", "tho", "won't", "yall", "type", "level", "looks", "might", "nobody", "saw", "wait", "based", "definitely", "discuss", "case", "folks", "general", "i'd", "itself", "levels", "smh", "w", "lt", "meant", "name", "piece", "possible", "public", "thanks", "under", "bro", "cannot", "certain", "completely", "kwilli1046", "door", "feels", "forget", "half", "huge", "let's", "often", "question", "sie", "t", "stay", "top", "usually", "wanna", "watching", "wear", "what's", "whether", "almost", "apparently", "i'll", "hyper", "ideas", "group", "later", "realize", "science", "result", "telling", "und", "wasn't", "blah", "claims", "cut", "define", "display", "e", "en", "except", "expect", "however", "idk", "kill", "leads", "podcast", "reaction", "reading", "shut", "thats", "view", "wanted", "we're", "wonder", "wouldn't", "9", "affects", "anymore", "asking", "break", "comment", "gave", "haven't", "i'll", "i’ll", "la", "lives", "meet", "online", "re", "throw", "together", "tweets", "un", "unfortunately", "ur", "vs", "went", "wtf", "の", "vengeance_is", "we're", "ain't", "took", "turn", "anyway", "felixanchor__", "fine", "fivethirtyeight"
+, "front", "gregjen56304807", "hand", "happens", "heard", "hearing", "isnt", "laugh", "perhaps",  "part", "new", "out", "end", "one", "think", "has", "taking", "why", "need", "see", "also", "don't", "know", "don’t", "its", "want", "way", "these", "other", "really", "here", "been", "i’m", "i'm", "into", "most", "things", "said", "go", "such", "very", "actually", "those", "did", "many", "something", "someone", "lot", "show", "can't", "well", "back", "got", "had", "called", "isn't", "over", "us", "will", "him", "his", "me", "call", "narratives"
+
+)) 
+
+#Assigns a numerical ID to each word in the custom stopword list
+CustomStopwords=tibble::rowid_to_column(CustomStopwords, "ID")
+```
+
+#6
+#Anti_join combines two tables by removing the words that are present on one table from the other table. In this case, both the CustomStopwords and the stopwords were removed from our tokenized data frame "TM_oneword"
+#Uses the package: dplyr, stopwords
+```{r}
+TM_clean <- TM_oneword %>%
+  anti_join(CustomStopwords, by = c("word" = "word"))
+
+TM_clean <- TM_clean %>%
+  anti_join(stop_words, by = c("word" = "word"))
+```
+
+#7
+#Unnest_tokens is used again, this time to pair each word in the same tweet to bigrams. The data frame we are using is our tokenized and clean data frame. The input column is "word."
+#Uses the package: tibble
+```{r}
+TM_bigrams <- TM_clean %>%
+  unnest_tokens(
+    output = bigram,
+    input = word,
+    token = "ngrams",
+    n = 2)
+```
+
+#8
+#This section of the code separates the bigram words into separate columns using the separate() function
+#Uses the libraries: tidyr
+```{r}
+TM_bigrams.separated <- TM_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep=" ")
+```
+
+#9
+#Filters the stop words from the bigram data frame.
+#Uses the package: dplyr
+```{r}
+TM_bigrams.filtered <- TM_bigrams.separated %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+```
+
+#10
+#These lines of code filter the tables for rare combinations of characters. These combinations are words that give no actual meaning such as 'ujc3njxowo'.
+#It does this with the use of square brackets, a negative sign, the which function, the str_detect function, and the regex function. The square brackets are a selection of various rows. These rows are all rows except the rows that contain the rare combination detected by the regex function.
+```{r}
+TM_bigrams.filtered_v2 <- 
+  TM_bigrams.filtered[-which(str_detect(TM_bigrams.filtered$word1,regex("\\d"))),]
+
+TM_bigrams.filtered_v2 <- 
+  TM_bigrams.filtered_v2[-which(str_detect(TM_bigrams.filtered_v2$word2, regex("\\d"))),]
+```
+
+#11
+#This, again, counts the filtered and separated bigrams and creates a data frame "TM_bigrams.count" with their frequency.
+```{r}
+TM_bigrams.count <- TM_bigrams.filtered_v2 %>%
+  count(word1, word2, sort=TRUE)
+```
+
+#12
+#After the bigrams were created, the dataframe could be filtered to include only bigrams with "toxic" or "masculinity." This new data frame is "TM_bigrams_count.toxic"
+```{r}
+TM_bigrams_count.toxic <-
+  subset(TM_bigrams.count,
+         word1 == "toxic" |
+           word2 == "masculinity")
+```
+
+#13
+#This section can be divided into two parts: filtering and graphing.
+#The filter function removes any bigram that has a frequency less than 6 and puts these values into a new table "TM_bigrams.toxic.count25"
+#graph_from_data_frame graphs the bigrams into an igraph. This igraph is contained in "TM_bigrams.toxic.count25" where each word's frequency is considered the value of the line length.
+```{r}
+TM_bigrams.toxic.count25 <- 
+  TM_bigrams_count.toxic %>%
+  filter(n > 5) %>%
+  graph_from_data_frame()
+```
+
+#14
+#The igraph in "TM_bigrams.toxic.count25" is graphed into a ggraph. This creates the final graph showing the words most related to the words "Toxic" and "Masculinity"
+#Plotting the graph with `ggraph` using  `layout = fr`
+#Set.seed sets the seed to 2016, meaning the random number generation becomes reproducable.
+#geom_edge_link creates lines between nodes with its color depending on the frequency of the bigram
+#geom_node_point() represents each node or word in a bigram as a dot/point as default
+#geom_node_text labels the nodes with the words
+```{r}
+set.seed(2016)
+ggraph(TM_bigrams.toxic.count25, layout = "fr") + 
+  geom_edge_link(aes(colour = factor(n))) + 
+  geom_node_point() + 
+  geom_node_text(aes(label=name), vjust = 1, hjust = 1)
+
+```
+
